@@ -150,19 +150,18 @@ class DepsManager:
             repo_cfg["path"] = str(p)
             self.save_config()
             return p
-
-        # Clone to cache
-        effective_url = repo_cfg.get("url") or self._default_url(repo_name)
-        Clone to cache
+# Clone to cache
 effective_url = repo_cfg.get("url") or self._default_url(repo_name)
-effective_branch = repo_cfg.get("branch") or "master"
+effective_branch = repo_cfg.get("branch")
 
-        dest = self.cache_dir / repo_name
-        if dest.exists():
-            # Already cloned — optionally switch branch
-            self._checkout_branch(dest, effective_branch)
-            self.save_config()
-            return dest
+dest = self.cache_dir / repo_name
+
+if dest.exists():
+    # Already cloned — optionally switch branch
+    if effective_branch:
+        self._checkout_branch(dest, effective_branch)
+    self.save_config()
+    return dest
 
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._git_clone(effective_url, dest, effective_branch, shallow)
