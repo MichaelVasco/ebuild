@@ -150,7 +150,7 @@ class DepsManager:
             repo_cfg["path"] = str(p)
             self.save_config()
             return p
-# Clone to cache
+
 effective_url = repo_cfg.get("url") or self._default_url(repo_name)
 effective_branch = repo_cfg.get("branch")
 
