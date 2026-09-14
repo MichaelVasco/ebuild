@@ -155,7 +155,6 @@ effective_url = repo_cfg.get("url") or self._default_url(repo_name)
 effective_branch = repo_cfg.get("branch")
 
 dest = self.cache_dir / repo_name
-
 if dest.exists():
     # Already cloned — optionally switch branch
     if effective_branch:
