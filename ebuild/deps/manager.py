@@ -128,7 +128,7 @@ class DepsManager:
         Args:
             repo_name: ``"eos"`` or ``"eboot"``.
             url: Git URL override. Falls back to config → default.
-            branch: Branch/tag override. Falls back to config → ``"master"``.
+            branch: Branch/tag override. Falls back to config; if unset, Git uses the remote default branch.
             path: If given, register this local path instead of cloning.
             shallow: Use ``--depth 1`` for faster clones (default *True*).
 
