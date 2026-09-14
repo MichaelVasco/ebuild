@@ -366,9 +366,7 @@ cmd.extend([url, str(dest)])
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             raise RuntimeError(f"Failed to clone {url}: {result.stderr.strip()}")
-
 @staticmethod
-def @staticmethod
 def _checkout_branch(repo_dir: Path, branch: Optional[str]) -> None:
     if not branch:
         return
@@ -384,6 +382,16 @@ def _checkout_branch(repo_dir: Path, branch: Optional[str]) -> None:
         if fetch.returncode != 0:
             raise RuntimeError(
                 f"Failed to fetch {repo_dir}: {fetch.stderr.strip()}"
+            )
+
+        checkout = subprocess.run(
+            ["git", "-C", str(repo_dir), "checkout", branch],
+            capture_output=True,
+            text=True,
+        )
+        if checkout.returncode != 0:
+            raise RuntimeError(
+                f"Failed to checkout {branch}: {checkout.stderr.strip()}"
             )
 
         checkout = subprocess.run(
