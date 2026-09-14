@@ -291,7 +291,7 @@ if dest.exists():
             info: Dict[str, Any] = {
                 "name": name,
                 "url": repo_cfg.get("url", self._default_url(name)),
-                "branch": repo_cfg.get("branch", "master"),
+                "branch": repo_cfg.get("branch"),
                 "config_path": repo_cfg.get("path"),
                 "cached": cached.is_dir(),
                 "cache_location": str(cached) if cached.is_dir() else None,
