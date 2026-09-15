@@ -71,6 +71,7 @@ class DepsManager:
         if EBUILD_CONFIG_PATH.exists():
             with open(EBUILD_CONFIG_PATH, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
+
             # Merge missing keys from defaults. Deep-copied: setup(),
             # set_url(), set_branch() and link() mutate these nested dicts
             # in place, and an aliased default would leak one instance's
@@ -82,6 +83,7 @@ class DepsManager:
                     for rname, rval in val.items():
                         if rname not in data["repos"]:
                             data["repos"][rname] = copy.deepcopy(rval)
+
             return data
 
         self._config = copy.deepcopy(DEFAULT_CONFIG)
@@ -92,7 +94,12 @@ class DepsManager:
         """Write the current configuration to ``~/.ebuild/config.yaml``."""
         ensure_ebuild_home()
         with open(EBUILD_CONFIG_PATH, "w", encoding="utf-8") as f:
-            yaml.dump(self._config, f, default_flow_style=False, sort_keys=False)
+            yaml.dump(
+                self._config,
+                f,
+                default_flow_style=False,
+                sort_keys=False,
+            )
 
     @property
     def config(self) -> Dict[str, Any]:
@@ -108,7 +115,11 @@ class DepsManager:
         env = os.environ.get("EBUILD_REPOS_DIR")
         if env:
             return Path(env)
-        raw = self._config.get("cache_dir", str(EBUILD_REPOS_DIR))
+
+        raw = self._config.get(
+            "cache_dir",
+            str(EBUILD_REPOS_DIR),
+        )
         return Path(os.path.expanduser(raw))
 
     # ------------------------------------------------------------------
@@ -128,42 +139,69 @@ class DepsManager:
         Args:
             repo_name: ``"eos"`` or ``"eboot"``.
             url: Git URL override. Falls back to config → default.
-            branch: Branch/tag override. Falls back to config; if unset, Git uses the remote default branch.
+            branch: Branch/tag override. Falls back to config; if unset,
+                Git uses the remote default branch.
             path: If given, register this local path instead of cloning.
             shallow: Use ``--depth 1`` for faster clones (default *True*).
 
         Returns:
             The resolved local path of the repo.
         """
-        repo_cfg = self._config.setdefault("repos", {}).setdefault(repo_name, {})
+        repo_cfg = self._config.setdefault(
+            "repos",
+            {},
+        ).setdefault(repo_name, {})
 
         if url:
             repo_cfg["url"] = url
+
         if branch:
             repo_cfg["branch"] = branch
 
         if path:
             # Link to local repo — no clone needed
             p = Path(path).resolve()
+
             if not p.is_dir():
-                raise FileNotFoundError(f"Local repo path does not exist: {p}")
+                raise FileNotFoundError(
+                    f"Local repo path does not exist: {p}"
+                )
+
             repo_cfg["path"] = str(p)
             self.save_config()
             return p
 
-effective_url = repo_cfg.get("url") or self._default_url(repo_name)
-effective_branch = repo_cfg.get("branch")
+        effective_url = (
+            repo_cfg.get("url")
+            or self._default_url(repo_name)
+        )
+        effective_branch = repo_cfg.get("branch")
 
-dest = self.cache_dir / repo_name
-if dest.exists():
-    # Already cloned — optionally switch branch
-    if effective_branch:
-        self._checkout_branch(dest, effective_branch)
-    self.save_config()
-    return dest
+        dest = self.cache_dir / repo_name
 
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self._git_clone(effective_url, dest, effective_branch, shallow)
+        if dest.exists():
+            # Already cloned — optionally switch branch
+            if effective_branch:
+                self._checkout_branch(
+                    dest,
+                    effective_branch,
+                )
+
+            self.save_config()
+            return dest
+
+        self.cache_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        self._git_clone(
+            effective_url,
+            dest,
+            effective_branch,
+            shallow,
+        )
+
         self.save_config()
         return dest
 
@@ -187,44 +225,62 @@ if dest.exists():
         """
         # 1. CLI override
         cli_path = self._cli_overrides.get(repo_name)
+
         if cli_path:
             p = Path(cli_path).resolve()
+
             if p.is_dir():
                 return p
 
         # 2. Environment variable
         env_var = ENV_PATH_VARS.get(repo_name)
+
         if env_var:
             env_val = os.environ.get(env_var)
+
             if env_val:
                 p = Path(env_val).resolve()
+
                 if p.is_dir():
                     return p
 
         # 3. Config path override
-        repo_cfg = self._config.get("repos", {}).get(repo_name, {})
+        repo_cfg = self._config.get(
+            "repos",
+            {},
+        ).get(repo_name, {})
+
         config_path = repo_cfg.get("path")
+
         if config_path:
             p = Path(config_path).resolve()
+
             if p.is_dir():
                 return p
 
         # 4. Cached clone
         cached = self.cache_dir / repo_name
+
         if cached.is_dir():
             return cached
 
-        # 5. Sibling directory (try documented aliases; Linux is case-sensitive)
+        # 5. Sibling directory
         if project_dir:
-            names = SIBLING_DIR_NAMES.get(repo_name, (repo_name,))
+            names = SIBLING_DIR_NAMES.get(
+                repo_name,
+                (repo_name,),
+            )
+
             for name in names:
                 sibling = project_dir.parent / name
+
                 if sibling.is_dir():
                     return sibling
 
-        # 6. Legacy embedded core/<name>/ (deprecation warning)
+        # 6. Legacy embedded core/<name>/
         if project_dir:
             core_path = project_dir / "core" / repo_name
+
             if core_path.is_dir():
                 warnings.warn(
                     f"Using embedded core/{repo_name}/ is deprecated. "
@@ -236,44 +292,77 @@ if dest.exists():
 
         return None
 
-    def is_available(self, repo_name: str, project_dir: Optional[Path] = None) -> bool:
+    def is_available(
+        self,
+        repo_name: str,
+        project_dir: Optional[Path] = None,
+    ) -> bool:
         """Check if *repo_name* is resolvable anywhere."""
-        return self.get_repo_path(repo_name, project_dir) is not None
+        return (
+            self.get_repo_path(
+                repo_name,
+                project_dir,
+            )
+            is not None
+        )
 
     # ------------------------------------------------------------------
     # Update
     # ------------------------------------------------------------------
 
-    def update(self, repo_name: Optional[str] = None) -> Dict[str, str]:
+    def update(
+        self,
+        repo_name: Optional[str] = None,
+    ) -> Dict[str, str]:
         """Git pull latest for one or all repos.
 
         Returns:
             Dict mapping repo name to result string (e.g. ``"updated"``).
         """
-        names = [repo_name] if repo_name else list(KNOWN_REPOS)
+        names = (
+            [repo_name]
+            if repo_name
+            else list(KNOWN_REPOS)
+        )
+
         results: Dict[str, str] = {}
 
         for name in names:
             repo_dir = self.cache_dir / name
+
             if not repo_dir.is_dir():
                 results[name] = "not cloned"
                 continue
 
-            repo_cfg = self._config.get("repos", {}).get(name, {})
+            repo_cfg = self._config.get(
+                "repos",
+                {},
+            ).get(name, {})
+
             if repo_cfg.get("path"):
                 results[name] = "linked (skipped)"
                 continue
 
             try:
                 subprocess.run(
-                    ["git", "-C", str(repo_dir), "pull", "--ff-only"],
+                    [
+                        "git",
+                        "-C",
+                        str(repo_dir),
+                        "pull",
+                        "--ff-only",
+                    ],
                     capture_output=True,
                     text=True,
                     check=True,
                 )
+
                 results[name] = "updated"
+
             except subprocess.CalledProcessError as e:
-                results[name] = f"failed: {e.stderr.strip()}"
+                results[name] = (
+                    f"failed: {e.stderr.strip()}"
+                )
 
         return results
 
@@ -284,23 +373,39 @@ if dest.exists():
     def status(self) -> List[Dict[str, Any]]:
         """Return status info for all known repos."""
         entries: List[Dict[str, Any]] = []
+
         for name in KNOWN_REPOS:
-            repo_cfg = self._config.get("repos", {}).get(name, {})
+            repo_cfg = self._config.get(
+                "repos",
+                {},
+            ).get(name, {})
+
             cached = self.cache_dir / name
 
             info: Dict[str, Any] = {
                 "name": name,
-                "url": repo_cfg.get("url", self._default_url(name)),
+                "url": repo_cfg.get(
+                    "url",
+                    self._default_url(name),
+                ),
                 "branch": repo_cfg.get("branch"),
                 "config_path": repo_cfg.get("path"),
                 "cached": cached.is_dir(),
-                "cache_location": str(cached) if cached.is_dir() else None,
+                "cache_location": (
+                    str(cached)
+                    if cached.is_dir()
+                    else None
+                ),
             }
 
             # Get current git branch/commit if cloned
             if cached.is_dir():
-                info["git_branch"] = self._git_current_branch(cached)
-                info["git_commit"] = self._git_head_commit(cached)
+                info["git_branch"] = (
+                    self._git_current_branch(cached)
+                )
+                info["git_commit"] = (
+                    self._git_head_commit(cached)
+                )
 
             entries.append(info)
 
@@ -310,18 +415,34 @@ if dest.exists():
     # Link / unlink
     # ------------------------------------------------------------------
 
-    def link(self, repo_name: str, local_path: str) -> None:
+    def link(
+        self,
+        repo_name: str,
+        local_path: str,
+    ) -> None:
         """Register a local path override (no symlink — just config entry)."""
         p = Path(local_path).resolve()
+
         if not p.is_dir():
-            raise FileNotFoundError(f"Path does not exist: {p}")
-        repo_cfg = self._config.setdefault("repos", {}).setdefault(repo_name, {})
+            raise FileNotFoundError(
+                f"Path does not exist: {p}"
+            )
+
+        repo_cfg = self._config.setdefault(
+            "repos",
+            {},
+        ).setdefault(repo_name, {})
+
         repo_cfg["path"] = str(p)
         self.save_config()
 
     def unlink(self, repo_name: str) -> None:
         """Remove a local path override, reverting to cache."""
-        repo_cfg = self._config.get("repos", {}).get(repo_name, {})
+        repo_cfg = self._config.get(
+            "repos",
+            {},
+        ).get(repo_name, {})
+
         repo_cfg.pop("path", None)
         self.save_config()
 
@@ -329,15 +450,31 @@ if dest.exists():
     # URL / branch setters
     # ------------------------------------------------------------------
 
-    def set_url(self, repo_name: str, url: str) -> None:
+    def set_url(
+        self,
+        repo_name: str,
+        url: str,
+    ) -> None:
         """Change the git URL for a repo."""
-        repo_cfg = self._config.setdefault("repos", {}).setdefault(repo_name, {})
+        repo_cfg = self._config.setdefault(
+            "repos",
+            {},
+        ).setdefault(repo_name, {})
+
         repo_cfg["url"] = url
         self.save_config()
 
-    def set_branch(self, repo_name: str, branch: str) -> None:
+    def set_branch(
+        self,
+        repo_name: str,
+        branch: str,
+    ) -> None:
         """Change the branch/tag for a repo."""
-        repo_cfg = self._config.setdefault("repos", {}).setdefault(repo_name, {})
+        repo_cfg = self._config.setdefault(
+            "repos",
+            {},
+        ).setdefault(repo_name, {})
+
         repo_cfg["branch"] = branch
         self.save_config()
 
@@ -349,145 +486,155 @@ if dest.exists():
     def _default_url(repo_name: str) -> str:
         if repo_name == "eos":
             return DEFAULT_EOS_REPO_URL
+
         if repo_name == "eboot":
             return DEFAULT_EBOOT_REPO_URL
+
         return ""
 
     @staticmethod
-    def _git_clone(url: str, dest: Path, branch: Optional[str], shallow: bool) -> None:
+    def _git_clone(
+        url: str,
+        dest: Path,
+        branch: Optional[str],
+        shallow: bool,
+    ) -> None:
         cmd = ["git", "clone"]
+
         if shallow:
-            cmd.extend(["--depth", "1"])
+            cmd.extend(
+                [
+                    "--depth",
+                    "1",
+                ]
+            )
+
         if branch:
-    cmd.extend(["--branch", branch])
+            cmd.extend(
+                [
+                    "--branch",
+                    branch,
+                ]
+            )
 
-cmd.extend([url, str(dest)])
+        cmd.extend(
+            [
+                url,
+                str(dest),
+            ]
+        )
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+        )
+
         if result.returncode != 0:
-            raise RuntimeError(f"Failed to clone {url}: {result.stderr.strip()}")
-@staticmethod
-def _checkout_branch(repo_dir: Path, branch: Optional[str]) -> None:
-    if not branch:
-        return
-
-    current = DepsManager._git_current_branch(repo_dir)
-
-    if current != branch:
-        fetch = subprocess.run(
-            ["git", "-C", str(repo_dir), "fetch", "--all"],
-            capture_output=True,
-            text=True,
-        )
-        if fetch.returncode != 0:
             raise RuntimeError(
-                f"Failed to fetch {repo_dir}: {fetch.stderr.strip()}"
-            )
-
-        checkout = subprocess.run(
-            ["git", "-C", str(repo_dir), "checkout", branch],
-            capture_output=True,
-            text=True,
-        )
-        if checkout.returncode != 0:
-            raise RuntimeError(
-                f"Failed to checkout {branch}: {checkout.stderr.strip()}"
-            )
-
-        checkout = subprocess.run(
-            ["git", "-C", str(repo_dir), "checkout", branch],
-            capture_output=True,
-            text=True,
-        )
-        if checkout.returncode != 0:
-            raise RuntimeError(
-                f"Failed to checkout {branch}: {checkout.stderr.strip()}"
-            ) -> None:
-    if not branch:
-        return
-
-    current = DepsManager._git_current_branch(repo_dir)
-
-    if current != branch:
-        fetch = subprocess.run(
-            ["git", "-C", str(repo_dir), "fetch", "--all"],
-            capture_output=True,
-            text=True,
-        )
-        if fetch.returncode != 0:
-            raise RuntimeError(
-                f"Failed to fetch {repo_dir}: {fetch.stderr.strip()}"
-            )
-
-        checkout = subprocess.run(
-            ["git", "-C", str(repo_dir), "checkout", branch],
-            capture_output=True,
-            text=True,
-        )
-        if checkout.returncode != 0:
-            raise RuntimeError(
-                f"Failed to checkout {branch}: {checkout.stderr.strip()}"
-            )
-    if not branch:
-        return
-
-    current = DepsManager._git_current_branch(repo_dir)
-
-    if current != branch:
-        fetch = subprocess.run(
-            ["git", "-C", str(repo_dir), "fetch", "--all"],
-            capture_output=True,
-            text=True,
-        )
-        if fetch.returncode != 0:
-            raise RuntimeError(
-                f"Failed to fetch {repo_dir}: {fetch.stderr.strip()}"
-            )
-
-        checkout = subprocess.run(
-            ["git", "-C", str(repo_dir), "checkout", branch],
-            capture_output=True,
-            text=True,
-        )
-        if checkout.returncode != 0:
-            raise RuntimeError(
-                f"Failed to checkout {branch}: {checkout.stderr.strip()}"
-            )
-        current = DepsManager._git_current_branch(repo_dir)
-        if current != branch:
-            subprocess.run(
-                ["git", "-C", str(repo_dir), "fetch", "--all"],
-                capture_output=True,
-                text=True,
-            )
-            subprocess.run(
-                ["git", "-C", str(repo_dir), "checkout", branch],
-                capture_output=True,
-                text=True,
+                f"Failed to clone {url}: "
+                f"{result.stderr.strip()}"
             )
 
     @staticmethod
-    def _git_current_branch(repo_dir: Path) -> str:
+    def _checkout_branch(
+        repo_dir: Path,
+        branch: Optional[str],
+    ) -> None:
+        if not branch:
+            return
+
+        current = DepsManager._git_current_branch(
+            repo_dir
+        )
+
+        if current != branch:
+            fetch = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(repo_dir),
+                    "fetch",
+                    "--all",
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            if fetch.returncode != 0:
+                raise RuntimeError(
+                    f"Failed to fetch {repo_dir}: "
+                    f"{fetch.stderr.strip()}"
+                )
+
+            checkout = subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(repo_dir),
+                    "checkout",
+                    branch,
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            if checkout.returncode != 0:
+                raise RuntimeError(
+                    f"Failed to checkout {branch}: "
+                    f"{checkout.stderr.strip()}"
+                )
+
+    @staticmethod
+    def _git_current_branch(
+        repo_dir: Path,
+    ) -> str:
         try:
             result = subprocess.run(
-                ["git", "-C", str(repo_dir), "rev-parse", "--abbrev-ref", "HEAD"],
+                [
+                    "git",
+                    "-C",
+                    str(repo_dir),
+                    "rev-parse",
+                    "--abbrev-ref",
+                    "HEAD",
+                ],
                 capture_output=True,
                 text=True,
                 check=True,
             )
+
             return result.stdout.strip()
-        except (subprocess.CalledProcessError, FileNotFoundError):
+
+        except (
+            subprocess.CalledProcessError,
+            FileNotFoundError,
+        ):
             return "(unknown)"
 
     @staticmethod
-    def _git_head_commit(repo_dir: Path) -> str:
+    def _git_head_commit(
+        repo_dir: Path,
+    ) -> str:
         try:
             result = subprocess.run(
-                ["git", "-C", str(repo_dir), "rev-parse", "--short", "HEAD"],
+                [
+                    "git",
+                    "-C",
+                    str(repo_dir),
+                    "rev-parse",
+                    "--short",
+                    "HEAD",
+                ],
                 capture_output=True,
                 text=True,
                 check=True,
             )
+
             return result.stdout.strip()
-        except (subprocess.CalledProcessError, FileNotFoundError):
+
+        except (
+            subprocess.CalledProcessError,
+            FileNotFoundError,
+        ):
             return "(unknown)"
