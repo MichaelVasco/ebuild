@@ -21,14 +21,14 @@ and this project adheres to
 
 ### Fixed
 
-- Dependency repositories now respect their remote default branch when no branch is configured. ebuild no longer assumes `master` for unconfigured dependency repositories. When no branch is specified, Git uses the dependency repository's own default branch, allowing custom and third-party repositories whose default branch is `main` or another branch to be cloned correctly.
+- **Dependency repositories now respect their remote default branch when no branch is configured.** ebuild no longer assumes `master` for unconfigured dependency repositories. When no branch is specified, Git uses the dependency repository's own default branch, allowing custom and third-party repositories whose default branch is `main` or another branch to be cloned correctly.
 
 ## [0.1.0] - 2026-03-31
 
 ### Added
 
 - Initial release of ebuild
-- Unified monorepo build system for the EmbeddedOS ecosystem
+- Unified monorepo build system for the EoS ecosystem
 - 18 CLI commands, including build, clean, flash, test, analyze, sdk, and release
 - Yocto-style SDK generation for 14 targets
 - Deliverable packager with ZIP packages per target and `manifest.json`
