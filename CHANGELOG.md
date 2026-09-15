@@ -22,6 +22,7 @@
   `cjson` (v1.7.18), `nanopb` (v0.4.9.1), `lvgl` (v9.2.2), `tinyusb` (v0.18.0), and `unity` (v2.6.1).
 
 ### Fixed
+- **Dependency repositories now use their remote default branch when no branch is configured.** ebuild no longer assumes `master` when cloning a dependency without an explicit branch, allowing custom and third-party repositories whose default branch is `main` or another branch to be cloned correctly (`ebuild/deps/manager.py`).
   * Dependency repositories now use their remote default branch when no branch is configured. ebuild no longer assumes `master` when cloning a dependency without an explicit branch, allowing custom and third-party repositories whose default branch is `main` or another branch to be cloned correctly (`ebuild/deps/manager.py`).
 - **Dependency repositories now use their remote default branch when no branch is configured.** ebuild no longer assumes `master` when cloning a dependency without an explicit branch. This allows custom and third-party repositories whose default branch is `main` or another branch to be cloned correctly (`ebuild/deps/manager.py`).
 - **Dependency repositories now use their remote default branch when no branch is configured.** ebuild no longer assumes `master` when cloning a dependency without an explicit branch. This allows custom and third-party repositories whose default branch is `main` or another branch to be cloned correctly (`ebuild/deps/manager.py`).
