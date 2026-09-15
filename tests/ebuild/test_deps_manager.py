@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 EoS Project
 
-"""Host tests for DepsManager."""
+"""Tests for DepsManager."""
 
 from pathlib import Path
 from unittest.mock import Mock
@@ -14,7 +14,7 @@ from ebuild.deps.manager import DepsManager, SIBLING_DIR_NAMES
 
 @pytest.fixture
 def isolated_deps(tmp_path, monkeypatch):
-    """Keep DepsManager tests away from the real ~/.ebuild directory."""
+    """Keep tests away from the real ~/.ebuild directory."""
     home = tmp_path / "ebuild-home"
     repos = home / "repos"
     config = home / "config.yaml"
@@ -23,26 +23,13 @@ def isolated_deps(tmp_path, monkeypatch):
         "ebuild.deps.manager.ensure_ebuild_home",
         lambda: home,
     )
-
     monkeypatch.setattr(
         "ebuild.deps.manager.EBUILD_CONFIG_PATH",
         config,
     )
-
-    monkeypatch.setenv(
-        "EBUILD_REPOS_DIR",
-        str(repos),
-    )
-
-    monkeypatch.delenv(
-        "EBUILD_EOS_PATH",
-        raising=False,
-    )
-
-    monkeypatch.delenv(
-        "EBUILD_EBOOT_PATH",
-        raising=False,
-    )
+    monkeypatch.setenv("EBUILD_REPOS_DIR", str(repos))
+    monkeypatch.delenv("EBUILD_EOS_PATH", raising=False)
+    monkeypatch.delenv("EBUILD_EBOOT_PATH", raising=False)
 
     home.mkdir()
     repos.mkdir()
@@ -61,7 +48,7 @@ def _case_sensitive_is_dir(self: Path) -> bool:
 
 
 def test_eboot_aliases_include_github_casing():
-    """eBoot should be recognized as an eboot sibling directory."""
+    """eBoot should be recognized as an eboot sibling."""
     assert SIBLING_DIR_NAMES["eboot"] == ("eboot", "eBoot")
 
 
@@ -96,7 +83,7 @@ def test_sibling_eboot_still_resolves_lowercase(
     isolated_deps,
     monkeypatch,
 ):
-    """Resolve the normal lowercase eboot sibling directory."""
+    """Resolve the lowercase eboot sibling directory."""
     workspace = isolated_deps / "ws"
     project = workspace / "ebuild"
     lower = workspace / "eboot"
@@ -189,7 +176,6 @@ def test_setup_uses_remote_default_branch_when_unconfigured(
     )
 
     assert destination == manager.cache_dir / "eos"
-
     mock_run.assert_called_once()
 
     clone_command = mock_run.call_args.args[0]
